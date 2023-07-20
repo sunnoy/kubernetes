@@ -18,6 +18,7 @@ package node
 
 import (
 	"fmt"
+	"net/url"
 
 	"k8s.io/klog"
 
@@ -68,6 +69,8 @@ func NewAuthorizer(graph *Graph, identifier nodeidentifier.NodeIdentifier, rules
 }
 
 var (
+	podResource       = api.Resource("pods")
+	nodeResource      = api.Resource("nodes")
 	configMapResource = api.Resource("configmaps")
 	secretResource    = api.Resource("secrets")
 	pvcResource       = api.Resource("persistentvolumeclaims")
@@ -94,6 +97,45 @@ func (r *NodeAuthorizer) Authorize(attrs authorizer.Attributes) (authorizer.Deci
 	if attrs.IsResourceRequest() {
 		requestResource := schema.GroupResource{Group: attrs.GetAPIGroup(), Resource: attrs.GetResource()}
 		switch requestResource {
+
+		case nodeResource:
+
+			if attrs.GetVerb() == "list" {
+				return r.checkListRequest(attrs, nodeName)
+			}
+
+			if attrs.GetVerb() == "get" {
+
+				if nodeName != attrs.GetName() {
+					return authorizer.DecisionDeny, "", nil
+				}
+
+			}
+
+			return authorizer.DecisionNoOpinion, "", nil
+
+		// special case for nodes
+		case podResource:
+
+			if attrs.GetVerb() == "list" {
+				return r.checkListRequest(attrs, nodeName)
+			}
+
+			if attrs.GetVerb() == "get" {
+
+				ok, err := r.hasPathFrom(nodeName, podVertexType, attrs.GetNamespace(), attrs.GetName())
+
+				if err != nil {
+					klog.V(2).Infof("NODE DENY: %v", err)
+					return authorizer.DecisionNoOpinion, fmt.Sprintf("no relationship found between node %q and this object", nodeName), nil
+				}
+				if !ok {
+					return authorizer.DecisionDeny, "", nil
+				}
+			}
+
+			return authorizer.DecisionNoOpinion, "", nil
+
 		case secretResource:
 			return r.authorizeReadNamespacedObject(nodeName, secretVertexType, attrs)
 		case configMapResource:
@@ -132,6 +174,20 @@ func (r *NodeAuthorizer) Authorize(attrs authorizer.Attributes) (authorizer.Deci
 	if rbac.RulesAllow(attrs, r.nodeRules...) {
 		return authorizer.DecisionAllow, "", nil
 	}
+	return authorizer.DecisionNoOpinion, "", nil
+}
+
+// checkListRequest authorizes list requests to objects of a specified types if they are related to the specified node
+func (r NodeAuthorizer) checkListRequest(attrs authorizer.Attributes, nodeName string) (authorizer.Decision, string, error) {
+	m, _ := url.ParseQuery(attrs.GetQuery())
+
+	if len(m["fieldSelector"]) > 0 {
+
+		if m["fieldSelector"][0] == "metadata.name="+nodeName {
+			return authorizer.DecisionAllow, "", nil
+		}
+	}
+
 	return authorizer.DecisionNoOpinion, "", nil
 }
 

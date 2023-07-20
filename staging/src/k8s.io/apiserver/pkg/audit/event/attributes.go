@@ -32,6 +32,7 @@ var _ authorizer.Attributes = &attributes{}
 type attributes struct {
 	event *audit.Event
 	path  string
+	query string
 }
 
 // NewAttributes returns a new attributes struct and parsed request uri
@@ -123,6 +124,10 @@ func (a *attributes) IsResourceRequest() bool {
 // GetPath returns the path uri accessed
 func (a *attributes) GetPath() string {
 	return a.path
+}
+
+func (a *attributes) GetQuery() string {
+	return a.query
 }
 
 // user represents the event user
