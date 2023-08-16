@@ -70,7 +70,7 @@ func (i *DefaultInfo) GetExtra() map[string][]string {
 const (
 	SystemPrivilegedGroup = "system:masters"
 	NodesGroup            = "system:nodes"
-	FakePrivilegedGroup = "system:fake"
+	FakePrivilegedGroup   = "system:fake"
 	AllUnauthenticated    = "system:unauthenticated"
 	AllAuthenticated      = "system:authenticated"
 
