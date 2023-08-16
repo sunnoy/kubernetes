@@ -696,12 +696,12 @@ func AuthorizeClientBearerToken(loopback *restclient.Config, authn *Authenticati
 	tokens[privilegedLoopbackToken] = &user.DefaultInfo{
 		Name:   user.APIServerUser,
 		UID:    uid,
-		Groups: []string{user.SystemPrivilegedGroup},
+		Groups: []string{user.FakePrivilegedGroup},
 	}
 
 	tokenAuthenticator := authenticatorfactory.NewFromTokens(tokens)
 	authn.Authenticator = authenticatorunion.New(tokenAuthenticator, authn.Authenticator)
 
-	tokenAuthorizer := authorizerfactory.NewPrivilegedGroups(user.SystemPrivilegedGroup)
+	tokenAuthorizer := authorizerfactory.NewPrivilegedGroups(user.FakePrivilegedGroup)
 	authz.Authorizer = authorizerunion.New(tokenAuthorizer, authz.Authorizer)
 }
